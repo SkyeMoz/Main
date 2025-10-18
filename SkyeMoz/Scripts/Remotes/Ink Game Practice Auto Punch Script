@@ -1,0 +1,105 @@
+--// 🌀 Smooth Dynamic GUI by Zynix
+
+--// Services
+local TweenService = game:GetService("TweenService")
+
+--// GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local Toggle = Instance.new("TextButton")
+local UICorner1 = Instance.new("UICorner")
+local UICorner2 = Instance.new("UICorner")
+local UIStroke = Instance.new("UIStroke")
+local UIScale = Instance.new("UIScale")
+
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+--// Frame
+Frame.Name = "MainFrame"
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.Position = UDim2.new(0.4, 0, 0.3, 0)
+Frame.Size = UDim2.new(0, 170, 0, 70)
+Frame.Active = true
+Frame.Draggable = true
+Frame.BorderSizePixel = 0
+Frame.BackgroundTransparency = 0.1
+
+UICorner1.CornerRadius = UDim.new(0, 12)
+UICorner1.Parent = Frame
+
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(80, 80, 80)
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.Parent = Frame
+
+UIScale.Parent = Frame
+
+--// Toggle Button
+Toggle.Name = "ToggleButton"
+Toggle.Parent = Frame
+Toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Toggle.Position = UDim2.new(0.1, 0, 0.2, 0)
+Toggle.Size = UDim2.new(0.8, 0, 0.6, 0)
+Toggle.Font = Enum.Font.GothamBold
+Toggle.Text = "Punch: OFF"
+Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.TextScaled = true
+Toggle.AutoButtonColor = false
+
+UICorner2.CornerRadius = UDim.new(0, 8)
+UICorner2.Parent = Toggle
+
+--// Dynamic Stuff
+local enabled = false
+local delayTime = 0.01 -- 10 milliseconds
+
+-- Hover Animation
+Toggle.MouseEnter:Connect(function()
+	TweenService:Create(Toggle, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundColor3 = enabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(80, 80, 80)
+	}):Play()
+end)
+
+Toggle.MouseLeave:Connect(function()
+	TweenService:Create(Toggle, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundColor3 = enabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+	}):Play()
+end)
+
+-- Click Animation
+Toggle.MouseButton1Click:Connect(function()
+	enabled = not enabled
+	
+	-- Button Pop Effect
+	local pop = TweenService:Create(UIScale, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.1 })
+	local back = TweenService:Create(UIScale, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+	pop:Play()
+	pop.Completed:Connect(function()
+		back:Play()
+	end)
+
+	-- Smooth Color + Text
+	if enabled then
+		TweenService:Create(Toggle, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
+			BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+		}):Play()
+		Toggle.Text = "Punch: ON"
+	else
+		TweenService:Create(Toggle, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
+			BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+		}):Play()
+		Toggle.Text = "Punch: OFF"
+	end
+end)
+
+--// Loop (Punch Spam)
+task.spawn(function()
+	while task.wait(delayTime) do
+		if enabled then
+			local args = {1}
+			game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("PunchEvent"):FireServer(unpack(args))
+		end
+	end
+end)
