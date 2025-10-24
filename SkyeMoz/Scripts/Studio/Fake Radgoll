@@ -1,0 +1,154 @@
+--[[
+	FE Ragdoll GUI Version (Unmovable)
+	Made by Minishakk | Modified by SkyeMoz
+	Credit to Minishakk for the open source base script!
+]]
+
+--// Settings
+local RAG_SPEED = 0 -- No movement allowed when ragdolled
+local ICON_ID = "rbxassetid://110443171187665"
+local CLICK_SOUND_ID = "rbxassetid://1673280232"
+local NOTIF_ICON = "rbxassetid://95704992992208"
+
+--// Services
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local player = Players.LocalPlayer
+
+--// Notify Credit
+StarterGui:SetCore("SendNotification", {
+	Title = "SkyeMoz Modified",
+	Text = "Credit to Minishakk for the open source script!",
+	Icon = NOTIF_ICON,
+	Duration = 6
+})
+
+--// Variables
+local isRagdoll = false
+local motors = {}
+
+--// Ragdoll Function
+local function ragdoll(char)
+	if isRagdoll then return end
+	isRagdoll = true
+	motors = {}
+
+	for _, motor in ipairs(char:GetDescendants()) do
+		if motor:IsA("Motor6D") and motor.Part0 and motor.Part1 then
+			table.insert(motors, {
+				Name = motor.Name,
+				Parent = motor.Parent,
+				Part0 = motor.Part0,
+				Part1 = motor.Part1,
+				C0 = motor.C0,
+				C1 = motor.C1
+			})
+			local a0 = Instance.new("Attachment", motor.Part0)
+			a0.Name = "RagdollAttachment0"; a0.CFrame = motor.C0
+			local a1 = Instance.new("Attachment", motor.Part1)
+			a1.Name = "RagdollAttachment1"; a1.CFrame = motor.C1
+			local c = Instance.new("BallSocketConstraint", motor.Part0)
+			c.Name = "RagdollConstraint"; c.Attachment0 = a0; c.Attachment1 = a1
+			motor:Destroy()
+		end
+	end
+
+	for _, part in ipairs(char:GetChildren()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			part.CanCollide = true
+		end
+	end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		for _, st in ipairs({
+			Enum.HumanoidStateType.GettingUp, Enum.HumanoidStateType.Jumping,
+			Enum.HumanoidStateType.Freefall, Enum.HumanoidStateType.Flying,
+			Enum.HumanoidStateType.Running, Enum.HumanoidStateType.Climbing,
+			Enum.HumanoidStateType.Landed,
+		}) do
+			humanoid:SetStateEnabled(st, false)
+		end
+		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		humanoid.PlatformStand = true
+	end
+end
+
+--// Unragdoll Function
+local function unragdoll(char)
+	if not isRagdoll then return end
+	isRagdoll = false
+
+	for _, d in ipairs(char:GetDescendants()) do
+		if (d:IsA("BallSocketConstraint") and d.Name=="RagdollConstraint")
+			or (d:IsA("Attachment") and d.Name:match("RagdollAttachment")) then
+			d:Destroy()
+		end
+	end
+
+	for _, data in ipairs(motors) do
+		local m = Instance.new("Motor6D")
+		m.Name = data.Name
+		m.Part0 = data.Part0
+		m.Part1 = data.Part1
+		m.C0 = data.C0
+		m.C1 = data.C1
+		m.Parent = data.Parent
+	end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		for _, st in ipairs({
+			Enum.HumanoidStateType.GettingUp, Enum.HumanoidStateType.Jumping,
+			Enum.HumanoidStateType.Freefall, Enum.HumanoidStateType.Flying,
+			Enum.HumanoidStateType.Running, Enum.HumanoidStateType.Climbing,
+			Enum.HumanoidStateType.Landed,
+		}) do
+			humanoid:SetStateEnabled(st, true)
+		end
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		humanoid.PlatformStand = false
+	end
+end
+
+--// GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "RagdollGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("ImageButton")
+button.Name = "RagdollButton"
+button.Parent = gui
+button.Size = UDim2.new(0, 80, 0, 80)
+button.Position = UDim2.new(1, -100, 0.5, -40)
+button.AnchorPoint = Vector2.new(0, 0)
+button.BackgroundColor3 = Color3.new(0, 0, 0)
+button.BackgroundTransparency = 0.5
+button.Image = ICON_ID
+button.ScaleType = Enum.ScaleType.Fit
+button.ImageColor3 = Color3.new(1,1,1)
+button.BorderSizePixel = 0
+button.AutoButtonColor = true
+
+-- Make circular
+local corner = Instance.new("UICorner", button)
+corner.CornerRadius = UDim.new(1, 0)
+
+-- Add click sound
+local clickSound = Instance.new("Sound", button)
+clickSound.SoundId = CLICK_SOUND_ID
+clickSound.Volume = 1
+
+--// Button Click
+button.MouseButton1Click:Connect(function()
+	clickSound:Play()
+	local char = player.Character
+	if not char then return end
+
+	if not isRagdoll then
+		ragdoll(char)
+	else
+		unragdoll(char)
+	end
+end)
