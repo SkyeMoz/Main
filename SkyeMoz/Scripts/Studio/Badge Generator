@@ -1,0 +1,156 @@
+--// Badge Generator GUI
+-- Client-sided | Safe & fun fake notification tool
+-- Works on Delta mobile or PC executors
+
+local player = game.Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "BadgeGenerator"
+gui.ResetOnSpawn = false
+gui.Parent = CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 320, 0, 280)
+frame.Position = UDim2.new(0.5, -160, 0.4, -140)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+-- Title Label
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "🏅 Badge Generator"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 20
+titleLabel.Parent = frame
+
+-- Title TextBox
+local titleBox = Instance.new("TextBox")
+titleBox.Size = UDim2.new(0.9, 0, 0, 30)
+titleBox.Position = UDim2.new(0.05, 0, 0, 45)
+titleBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+titleBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleBox.ClearTextOnFocus = false
+titleBox.Font = Enum.Font.SourceSans
+titleBox.TextSize = 18
+titleBox.Text = ""
+titleBox.PlaceholderText = "Title"
+titleBox.Parent = frame
+Instance.new("UICorner", titleBox)
+
+-- Subtitle TextBox
+local subBox = Instance.new("TextBox")
+subBox.Size = UDim2.new(0.9, 0, 0, 30)
+subBox.Position = UDim2.new(0.05, 0, 0, 85)
+subBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+subBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+subBox.ClearTextOnFocus = false
+subBox.Font = Enum.Font.SourceSans
+subBox.TextSize = 18
+subBox.Text = ""
+subBox.PlaceholderText = "Subtitle"
+subBox.Parent = frame
+Instance.new("UICorner", subBox)
+
+-- Thumbnail TextBox
+local thumbBox = Instance.new("TextBox")
+thumbBox.Size = UDim2.new(0.9, 0, 0, 30)
+thumbBox.Position = UDim2.new(0.05, 0, 0, 125)
+thumbBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+thumbBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+thumbBox.ClearTextOnFocus = false
+thumbBox.Font = Enum.Font.SourceSans
+thumbBox.TextSize = 18
+thumbBox.Text = ""
+thumbBox.PlaceholderText = "Thumbnail ID"
+thumbBox.Parent = frame
+Instance.new("UICorner", thumbBox)
+
+-- Delay TextBox
+local delayBox = Instance.new("TextBox")
+delayBox.Size = UDim2.new(0.9, 0, 0, 30)
+delayBox.Position = UDim2.new(0.05, 0, 0, 165)
+delayBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+delayBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+delayBox.ClearTextOnFocus = false
+delayBox.Font = Enum.Font.SourceSans
+delayBox.TextSize = 18
+delayBox.Text = ""
+delayBox.PlaceholderText = "Delay Seconds"
+delayBox.Parent = frame
+Instance.new("UICorner", delayBox)
+
+-- Toggle Delete GUI Button
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 25, 0, 25)
+toggleBtn.Position = UDim2.new(0.05, 0, 0, 205)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+toggleBtn.Text = ""
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 20
+toggleBtn.Parent = frame
+Instance.new("UICorner", toggleBtn)
+
+local toggleLabel = Instance.new("TextLabel")
+toggleLabel.Size = UDim2.new(0, 200, 0, 25)
+toggleLabel.Position = UDim2.new(0.15, 0, 0, 205)
+toggleLabel.BackgroundTransparency = 1
+toggleLabel.Text = "Delete GUI after Submit"
+toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleLabel.Font = Enum.Font.SourceSans
+toggleLabel.TextSize = 18
+toggleLabel.Parent = frame
+
+local toggleOn = false
+
+toggleBtn.MouseButton1Click:Connect(function()
+	toggleOn = not toggleOn
+	toggleBtn.BackgroundColor3 = toggleOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
+end)
+
+-- Submit Button
+local submitBtn = Instance.new("TextButton")
+submitBtn.Text = "Submit ✅"
+submitBtn.Size = UDim2.new(0.9, 0, 0, 35)
+submitBtn.Position = UDim2.new(0.05, 0, 0, 240)
+submitBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+submitBtn.TextColor3 = Color3.new(1, 1, 1)
+submitBtn.Font = Enum.Font.SourceSansBold
+submitBtn.TextSize = 20
+submitBtn.Parent = frame
+Instance.new("UICorner", submitBtn)
+
+-- Function to send notification
+submitBtn.MouseButton1Click:Connect(function()
+	local title = titleBox.Text ~= "" and titleBox.Text or "Notification"
+	local subtitle = subBox.Text ~= "" and subBox.Text or "You received a fake badge!"
+	local thumbID = thumbBox.Text ~= "" and thumbBox.Text or "7577357898"
+	local delay = tonumber(delayBox.Text) or 0
+
+	submitBtn.Text = "⏳ Waiting..."
+	if toggleOn then
+		gui:Destroy()
+	end
+
+	task.wait(delay)
+
+	StarterGui:SetCore("SendNotification", {
+		Title = title,
+		Text = subtitle,
+		Icon = "rbxassetid://" .. thumbID,
+		Duration = 5,
+	})
+end)
