@@ -1,0 +1,235 @@
+-- LocalScript (StarterGui)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- 🧹 Remove old GUI
+for _, gui in ipairs(playerGui:GetChildren()) do
+	if gui.Name == "TeleportProximityGUI" then
+		gui:Destroy()
+	end
+end
+
+-- 🎨 GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "TeleportProximityGUI"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 260, 0, 120)
+frame.Position = UDim2.new(0.5, -130, 0.5, -60)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,28)
+
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 4
+stroke.Color = Color3.fromRGB(141,255,90)
+stroke.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,-20,0,44)
+title.Position = UDim2.new(0,10,0,6)
+title.BackgroundTransparency = 1
+title.Text = "Survival instict (@Resul)"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.Font = Enum.Font.Code
+title.TextScaled = true
+title.Parent = frame
+
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(0.9,0,0,36)
+toggle.Position = UDim2.new(0.05,0,0,48)
+toggle.BackgroundColor3 = Color3.fromRGB(50,50,50)
+toggle.Text = "Start"
+toggle.TextColor3 = Color3.fromRGB(255,255,255)
+toggle.Font = Enum.Font.Code
+toggle.TextScaled = true
+toggle.Parent = frame
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(0,18)
+
+local radiusBox = Instance.new("TextBox")
+radiusBox.Size = UDim2.new(0.9,0,0,28)
+radiusBox.Position = UDim2.new(0.05,0,0,88)
+radiusBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
+radiusBox.Text = "10"
+radiusBox.PlaceholderText = "Radius (studs)"
+radiusBox.ClearTextOnFocus = false
+radiusBox.Font = Enum.Font.Code
+radiusBox.TextScaled = true
+radiusBox.TextColor3 = Color3.fromRGB(255,255,255)
+radiusBox.Parent = frame
+Instance.new("UICorner", radiusBox).CornerRadius = UDim.new(0,14)
+
+-- ⚙️ Logic
+local toggled = false
+local cooldown = 0.25
+local lastTeleport = 0
+
+toggle.MouseButton1Click:Connect(function()
+	toggled = not toggled
+	if toggled then
+		toggle.Text = "Stop"
+		toggle.BackgroundColor3 = Color3.fromRGB(0,200,100)
+	else
+		toggle.Text = "Start"
+		toggle.BackgroundColor3 = Color3.fromRGB(50,50,50)
+	end
+end)
+
+local function getRadius()
+	local n = tonumber(radiusBox.Text)
+	if not n or n <= 0 then return 10 end
+	return math.clamp(n,1,500)
+end
+
+-- Highlights
+local highlights = {}
+local RED_RADIUS = 8
+
+local function createHighlight(target)
+	if not target.Character then return end
+	if highlights[target] then return end
+	local highlight = Instance.new("Highlight")
+	highlight.Adornee = target.Character
+	highlight.FillTransparency = 0.6
+	highlight.OutlineTransparency = 0.6
+	highlight.FillColor = Color3.fromRGB(255,255,0)
+	highlight.OutlineColor = Color3.fromRGB(255,255,0)
+	highlight.Parent = Workspace
+	highlights[target] = highlight
+
+	target.CharacterRemoving:Connect(function()
+		if highlights[target] then
+			highlights[target]:Destroy()
+			highlights[target] = nil
+		end
+	end)
+end
+
+Players.PlayerRemoving:Connect(function(plr)
+	if highlights[plr] then
+		highlights[plr]:Destroy()
+		highlights[plr] = nil
+	end
+end)
+
+player.CharacterRemoving:Connect(function()
+	for _,h in pairs(highlights) do
+		h:Destroy()
+	end
+	highlights = {}
+end)
+
+-- Ground check
+local function isGroundBelow(pos)
+	local ray = Ray.new(pos, Vector3.new(0,-6,0))
+	return Workspace:FindPartOnRay(ray)
+end
+
+-- Smart escape: avoid corners/walls/edges
+local function escapeEdge(hrp)
+	local directions = {
+		Vector3.new(30,0,0),Vector3.new(-30,0,0),
+		Vector3.new(0,0,30),Vector3.new(0,0,-30),
+		Vector3.new(30,0,30),Vector3.new(30,0,-30),
+		Vector3.new(-30,0,30),Vector3.new(-30,0,-30)
+	}
+	local bestPos = nil
+	local maxDist = -math.huge
+
+	for _,dir in ipairs(directions) do
+		local newPos = hrp.Position + dir
+		if isGroundBelow(newPos) then
+			local clear = Workspace:FindPartsInRegion3WithIgnoreList(
+				Region3.new(newPos - Vector3.new(2,3,2), newPos + Vector3.new(2,3,2)),
+				{player.Character},
+				1
+			)
+			if #clear == 0 then
+				local dist = dir.Magnitude
+				if dist > maxDist then
+					bestPos = newPos
+					maxDist = dist
+				end
+			end
+		end
+	end
+
+	if bestPos then
+		hrp.CFrame = CFrame.new(bestPos, bestPos + Vector3.new(0,0,1))
+	end
+end
+
+-- 💨 Main loop
+RunService.RenderStepped:Connect(function()
+	local char = player.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not isGroundBelow(hrp.Position) then
+		escapeEdge(hrp)
+	end
+
+	if toggled then
+		local now = tick()
+		if now - lastTeleport >= cooldown then
+			local radius = getRadius()
+			local closest, closestDist, closestVec = nil, radius+1, nil
+
+			for _, other in pairs(Players:GetPlayers()) do
+				if other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
+					local othHRP = other.Character.HumanoidRootPart
+					local offset = othHRP.Position - hrp.Position
+					local dist = offset.Magnitude
+
+					createHighlight(other)
+
+					-- Smooth highlight colors
+					if highlights[other] then
+						local color
+						if dist <= RED_RADIUS then
+							color = Color3.fromRGB(255,0,0)
+						elseif dist <= radius*0.5 then
+							color = Color3.fromRGB(255,165,0)
+						else
+							color = Color3.fromRGB(255,255,0)
+						end
+						highlights[other].FillColor = color
+						highlights[other].OutlineColor = color
+					end
+
+					if dist < closestDist then
+						closest, closestDist, closestVec = other, dist, offset
+					end
+				end
+			end
+
+			-- Teleport scaled by proximity
+			if closest and closestDist <= radius then
+				local localVec = hrp.CFrame:VectorToObjectSpace(closestVec)
+				local teleportDist = math.clamp(closestDist*1.2, 5, 30)
+
+				local moveDir
+				if math.abs(localVec.X) > math.abs(localVec.Z) then
+					moveDir = Vector3.new((localVec.X>0 and -1 or 1)*teleportDist,0,0)
+				else
+					moveDir = Vector3.new(0,0,(localVec.Z>0 and -1 or 1)*teleportDist)
+				end
+
+				hrp.CFrame = hrp.CFrame * CFrame.new(moveDir)
+				hrp.Velocity = Vector3.new(0,20,0)
+				lastTeleport = now
+			end
+		end
+	end
+end)
